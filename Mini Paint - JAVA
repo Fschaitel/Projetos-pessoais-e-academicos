@@ -1,0 +1,181 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.io.*;
+import java.awt.image.RenderedImage;
+import javax.imageio.ImageIO;
+
+class Desenhando extends JFrame {
+    private Painel painel;
+
+    public Desenhando() {
+        setTitle("Desenho Simples");
+        setSize(800, 600);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+
+        JPanel painelBotoes = new JPanel();
+        painelBotoes.setLayout(new GridLayout(1, 5));
+
+        JButton salvar = new JButton("Salvar");
+        JButton carregar = new JButton("Carregar");
+        JButton forma = new JButton("Escolher Forma");
+        JButton cor = new JButton("Cor");
+        JButton limpar = new JButton("Limpar");
+
+        salvar.setBackground(Color.LIGHT_GRAY);
+        carregar.setBackground(Color.LIGHT_GRAY);
+        forma.setBackground(Color.LIGHT_GRAY);
+        cor.setBackground(Color.LIGHT_GRAY);
+        limpar.setBackground(Color.LIGHT_GRAY);
+
+        painelBotoes.add(salvar);
+        painelBotoes.add(carregar);
+        painelBotoes.add(forma);
+        painelBotoes.add(cor);
+        painelBotoes.add(limpar);
+
+        painel = new Painel();
+        add(painelBotoes, BorderLayout.NORTH);
+        add(painel, BorderLayout.CENTER);
+
+        salvar.addActionListener(e -> painel.salvar());
+        carregar.addActionListener(e -> painel.carregar());
+        forma.addActionListener(e -> painel.mudarForma());
+        cor.addActionListener(e -> painel.mudarCor());
+        limpar.addActionListener(e -> painel.limpar());
+
+        setVisible(true);
+    }
+
+    public static void main(String[] args) {
+        new Desenhando();
+    }
+}
+
+class Painel extends JPanel {
+    private Image img;
+    private Graphics2D g2d;
+    private Color cor = Color.BLACK;
+    private String forma = "Livre";
+    private int x1, y1, x2, y2;
+
+    public Painel() {
+        setBackground(Color.WHITE);
+
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                x1 = e.getX();
+                y1 = e.getY();
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                x2 = e.getX();
+                y2 = e.getY();
+                desenharForma();
+            }
+        });
+
+        addMouseMotionListener(new MouseAdapter() {
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                if (forma.equals("Livre")) {
+                    x2 = e.getX();
+                    y2 = e.getY();
+                    desenharLinhaLivre();
+                }
+            }
+        });
+    }
+
+    private void desenharForma() {
+        if (g2d == null) {
+            preparar();
+        }
+
+        switch (forma) {
+            case "Retângulo":
+                g2d.drawRect(Math.min(x1, x2), Math.min(y1, y2),
+                        Math.abs(x2 - x1), Math.abs(y2 - y1));
+                break;
+            case "Círculo":
+                int d = Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1));
+                g2d.drawOval(Math.min(x1, x2), Math.min(y1, y2), d, d);
+                break;
+            case "Triângulo":
+                int[] xPoints = {x1, (x1 + x2) / 2, x2};
+                int[] yPoints = {y2, y1, y2};
+                g2d.drawPolygon(xPoints, yPoints, 3);
+                break;
+        }
+
+        repaint();
+    }
+
+    private void desenharLinhaLivre() {
+        if (g2d == null) {
+            preparar();
+        }
+
+        g2d.drawLine(x1, y1, x2, y2);
+        x1 = x2;
+        y1 = y2;
+        repaint();
+    }
+
+    private void preparar() {
+        img = createImage(getWidth(), getHeight());
+        g2d = (Graphics2D) img.getGraphics();
+        g2d.setColor(cor);
+        g2d.setStroke(new BasicStroke(2));
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        if (img != null) {
+            g.drawImage(img, 0, 0, null);
+        }
+    }
+
+    public void salvar() {
+        File file = new File("desenho.bmp");
+        try {
+            ImageIO.write((RenderedImage) img, "bmp", file);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void carregar() {
+        File file = new File("desenho.bmp");
+        try {
+            img = ImageIO.read(file);
+            g2d = (Graphics2D) img.getGraphics();
+            repaint();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void mudarForma() {
+        String[] opcoes = {"Livre", "Retângulo", "Círculo", "Triângulo"};
+        forma = (String) JOptionPane.showInputDialog(this, "Escolha uma forma:", "Forma",
+                JOptionPane.QUESTION_MESSAGE, null, opcoes, forma);
+    }
+
+    public void mudarCor() {
+        cor = JColorChooser.showDialog(this, "Escolha uma cor", cor);
+        if (g2d != null) {
+            g2d.setColor(cor);
+        }
+    }
+
+    public void limpar() {
+        img = null;
+        g2d = null;
+        repaint();
+    }
+}
